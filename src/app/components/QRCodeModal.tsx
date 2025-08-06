@@ -26,20 +26,19 @@ export default function QRCodeModal({
 
     document.addEventListener('click', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
-    
+   
     return () => {
       document.removeEventListener('click', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [onClose]);
 
-  const getQRValue = (url: string) => {
+ const getQRValue = (url: string) => {
   try {
-    new URL(url); // Validate it's a proper URL
+    new URL(url);
     return url;
   } catch {
-    // If it's a data URL, create a download handler
-    return `data:application/octet-stream;base64,${url.split(',')[1]}`;
+    return window.location.origin + '/download?image=' + encodeURIComponent(url);
   }
 };
 
@@ -54,8 +53,8 @@ export default function QRCodeModal({
   };
 
   // Get the appropriate URL for display
-  const displayUrl = isValidUrl(downloadUrl) 
-    ? downloadUrl 
+  const displayUrl = isValidUrl(downloadUrl)
+    ? downloadUrl
     : 'Image download available';
 
   return (
@@ -66,7 +65,7 @@ export default function QRCodeModal({
       <div className="bg-white rounded-xl p-6 max-w-sm w-full">
         <h3 className="text-xl font-bold text-center mb-4">Scan to Download</h3>
         <div className="flex justify-center mb-6 p-4 bg-white">
-          <QRCode 
+          <QRCode
             value={getQRValue(downloadUrl)}
             size={200}
             level="H"
@@ -78,8 +77,8 @@ export default function QRCodeModal({
           Scan this QR code with your phone to download the image
         </div>
         <div className="text-center text-xs text-gray-500 mb-4 break-all">
-          {displayUrl.length > 40 
-            ? `${displayUrl.substring(0, 40)}...` 
+          {displayUrl.length > 40
+            ? `${displayUrl.substring(0, 40)}...`
             : displayUrl}
         </div>
         <button
