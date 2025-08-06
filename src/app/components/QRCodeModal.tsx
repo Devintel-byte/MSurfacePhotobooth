@@ -33,6 +33,16 @@ export default function QRCodeModal({
     };
   }, [onClose]);
 
+  const getQRValue = (url: string) => {
+  try {
+    new URL(url); // Validate it's a proper URL
+    return url;
+  } catch {
+    // If it's a data URL, create a download handler
+    return `data:application/octet-stream;base64,${url.split(',')[1]}`;
+  }
+};
+
   // Add URL validation
   const isValidUrl = (url: string) => {
     try {
@@ -57,7 +67,7 @@ export default function QRCodeModal({
         <h3 className="text-xl font-bold text-center mb-4">Scan to Download</h3>
         <div className="flex justify-center mb-6 p-4 bg-white">
           <QRCode 
-            value={downloadUrl}
+            value={getQRValue(downloadUrl)}
             size={200}
             level="H"
             bgColor="#ffffff"

@@ -66,87 +66,113 @@ export const ResultPage = () => {
     fetchResult();
   }, [jobId, filterId, router]);
 
-  const createCompositeImage = async (imageUrl: string) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+ const createCompositeImage = async (imageUrl: string) => {
+  const canvas = canvasRef.current;
+  if (!canvas) return;
 
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
 
-    try {
-      // Load the generated image
-      const generatedImg = new window.Image();
-      generatedImg.crossOrigin = 'anonymous'; // Handle CORS if needed
-      generatedImg.src = imageUrl;
-      await new Promise((resolve) => {
-        generatedImg.onload = resolve;
+  try {
+    // Helper function to load images with error handling
+    const loadImage = (src: string): Promise<HTMLImageElement> => {
+      return new Promise((resolve, reject) => {
+        const img = new window.Image();
+        img.crossOrigin = 'Anonymous';
+        img.src = src;
+        img.onload = () => resolve(img);
+        img.onerror = (e) => {
+          console.error('Error loading image:', src, e);
+          reject(new Error(`Failed to load image: ${src}`));
+        };
       });
+    };
 
-      // Load the overlay image
-      const overlayImg = new window.Image();
-      overlayImg.crossOrigin = 'anonymous'; // Handle CORS if needed
-      overlayImg.src = OVERLAY_IMAGE;
-      await new Promise((resolve) => {
-        overlayImg.onload = resolve;
-      });
+    // Load both images in parallel
+    const [generatedImg, overlayImg] = await Promise.all([
+      loadImage(imageUrl),
+      loadImage(OVERLAY_IMAGE)
+    ]);
 
-      // Draw the composite image
-      ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(generatedImg, 0, 0, width, height);
-      ctx.drawImage(overlayImg, 0, 0, width, height);
+    // Draw the composite image
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(generatedImg, 0, 0, width, height);
+    ctx.drawImage(overlayImg, 0, 0, width, height);
 
-      // Convert to data URL
-      const compositeDataUrl = canvas.toDataURL('image/png');
-      setCompositeImage(compositeDataUrl);
+    // Convert to data URL with quality parameter
+    const compositeDataUrl = canvas.toDataURL('image/png', 0.9);
+    setCompositeImage(compositeDataUrl);
 
-      // Upload to edgestore
-      await uploadToEdgestore(compositeDataUrl);
+    // Upload to edgestore
+    await uploadToEdgestore(compositeDataUrl);
     } catch (err) {
       console.error('Error creating composite image:', err);
-      setCompositeImage(imageUrl); // Fallback to original image
+      // Fallback to original image if composition fails
+      setCompositeImage(imageUrl);
+      setImageUrl(imageUrl); // Also set as imageUrl for QR code
     }
   };
 
   const uploadToEdgestore = async (imageDataUrl: string) => {
-    try {
-      const response = await fetch(imageDataUrl);
-      const blob = await response.blob();
-      const file = new File([blob], `ai-photobooth-${jobId}.png`, { type: 'image/png' });
-
-      const uploadResult = await edgestore.publicFiles.upload({
-        file,
-        options: { temporary: false },
-      });
-      
-      console.log('Composite image uploaded to edgestore:', uploadResult.url);
-      setImageUrl(uploadResult.url);
-    } catch (err) {
-      console.error('Error uploading to edgestore:', err);
-    }
-  };
-
-  const handleDownload = async () => {
-    if (!compositeImage) return;
+  try {
+    const response = await fetch(imageDataUrl);
+    if (!response.ok) throw new Error('Failed to fetch image data');
     
-    setDownloading(true);
-    try {
-      const link = document.createElement('a');
-      link.href = compositeImage;
-      link.download = `ai-photobooth-${jobId}.png`;
-      link.click();
-    } finally {
-      setDownloading(false);
-    }
-  };
+    const blob = await response.blob();
+    const file = new File([blob], `ai-photobooth-${jobId}.png`, { 
+      type: 'image/png',
+      lastModified: Date.now()
+    });
+
+    console.log('Uploading to EdgeStore...');
+    const uploadResult = await edgestore.publicFiles.upload({
+      file,
+      options: { 
+        temporary: false,
+        manualFileName: `ai-photobooth-${jobId}.png`
+      },
+    });
+    
+    console.log('Upload successful:', uploadResult);
+    setImageUrl(uploadResult.url);
+    return uploadResult.url;
+  } catch (err) {
+    console.error('Upload failed:', err);
+    // Fallback to data URL if upload fails
+    setImageUrl(imageDataUrl);
+    return imageDataUrl;
+  }
+};
+
+ const handleDownload = async () => {
+  if (!compositeImage) return;
+  
+  setDownloading(true);
+  try {
+    const link = document.createElement('a');
+    link.href = compositeImage;
+    link.download = `ai-photobooth-${jobId}-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    console.error('Download failed:', err);
+  } finally {
+    setDownloading(false);
+  }
+};
 
 const handleShowQRCode = () => {
-  // Only allow QR code for HTTP(S) URLs
-  if (imageUrl && imageUrl.startsWith('http')) {
+  if (!imageUrl && !compositeImage) return;
+  
+  // Prefer the EdgeStore URL if available
+  const urlToUse = imageUrl?.startsWith('http') ? imageUrl : compositeImage;
+  if (urlToUse) {
     setShowQRModal(true);
   }
-  };
+};
 
   // Format base64 string for proper display
   const formatBase64 = (base64: string) => {
