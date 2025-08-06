@@ -36,7 +36,8 @@ export const ResultPage = () => {
   // Dimensions and overlay image
   const width = Number(searchParams.get('width')) || 768;
   const height = Number(searchParams.get('height')) || 1152;
-  const OVERLAY_IMAGE = `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/Booth_overlay_PRE.png`;
+  const OVERLAY_IMAGE = '/Booth_overlay_PRE.png';
+
   useEffect(() => {
     if (!jobId || !filterId) {
       setError('Missing required parameters.');
@@ -77,6 +78,7 @@ export const ResultPage = () => {
     try {
       // Load the generated image
       const generatedImg = new window.Image();
+      generatedImg.crossOrigin = 'anonymous'; // Handle CORS if needed
       generatedImg.src = imageUrl;
       await new Promise((resolve) => {
         generatedImg.onload = resolve;
@@ -84,6 +86,7 @@ export const ResultPage = () => {
 
       // Load the overlay image
       const overlayImg = new window.Image();
+      overlayImg.crossOrigin = 'anonymous'; // Handle CORS if needed
       overlayImg.src = OVERLAY_IMAGE;
       await new Promise((resolve) => {
         overlayImg.onload = resolve;
@@ -139,8 +142,8 @@ export const ResultPage = () => {
   };
 
 const handleShowQRCode = () => {
-  const urlToShare = imageUrl || compositeImage;
-  if (urlToShare) {
+  // Only allow QR code for HTTP(S) URLs
+  if (imageUrl && imageUrl.startsWith('http')) {
     setShowQRModal(true);
   }
   };
@@ -256,9 +259,9 @@ const handleShowQRCode = () => {
               </div>
       </div>
 
-      {showQRModal && (imageUrl || compositeImage) && (
+      {showQRModal && imageUrl && imageUrl.startsWith('http') && (
         <QRCodeModal 
-          downloadUrl={imageUrl || compositeImage || ''}
+          downloadUrl={imageUrl}
           onClose={() => setShowQRModal(false)}
         />
       )}
