@@ -36,7 +36,7 @@ export const ResultPage = () => {
   // Dimensions and overlay image
   const width = Number(searchParams.get('width')) || 768;
   const height = Number(searchParams.get('height')) || 1152;
-  const OVERLAY_IMAGE = 'Booth_overlay_PRE.png';
+  const OVERLAY_IMAGE = '/api/overlay';
 
   useEffect(() => {
     if (!jobId || !filterId) {
@@ -115,45 +115,54 @@ export const ResultPage = () => {
     }
   };
 
- const uploadToEdgestore = async (imageDataUrl: string) => {
+  const uploadToEdgestore = async (imageDataUrl: string) => {
   try {
     const response = await fetch(imageDataUrl);
-    if (!response.ok) throw new Error(`Fetch failed: ${response.statusText}`);
+    if (!response.ok) throw new Error('Failed to fetch image data');
+   
     const blob = await response.blob();
-    const file = new File([blob], `ai-photobooth-${jobId}.png`, { type: 'image/png' });
+    const file = new File([blob], `ai-photobooth-${jobId}.png`, {
+      type: 'image/png',
+      lastModified: Date.now()
+    });
+
     console.log('Uploading to EdgeStore...');
-    const uploadResult = await edgestore.publicFiles.upload({ file });
+    const uploadResult = await edgestore.publicFiles.upload({
+      file,
+      options: {
+        temporary: false,
+        manualFileName: `ai-photobooth-${jobId}.png`
+      },
+    });
+   
     console.log('Upload successful:', uploadResult);
     setImageUrl(uploadResult.url);
     return uploadResult.url;
   } catch (err) {
     console.error('Upload failed:', err);
+    // Fallback to data URL if upload fails
     setImageUrl(imageDataUrl);
     return imageDataUrl;
   }
 };
 
-const handleDownload = async () => {
+ const handleDownload = async () => {
   if (!compositeImage) return;
+ 
   setDownloading(true);
   try {
-    const response = await fetch(compositeImage);
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url;
+    link.href = compositeImage;
     link.download = `ai-photobooth-${jobId}-${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   } catch (err) {
     console.error('Download failed:', err);
   } finally {
     setDownloading(false);
   }
 };
-
 
 const handleShowQRCode = () => {
   if (!imageUrl && !compositeImage) return;

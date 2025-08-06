@@ -10,7 +10,6 @@ export default function QRCodeModal({
   downloadUrl: string;
   onClose: () => void;
 }) {
-  // Close modal when clicking outside or pressing Escape
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if ((e.target as HTMLElement).id === 'modal-backdrop') {
@@ -26,34 +25,25 @@ export default function QRCodeModal({
 
     document.addEventListener('click', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
-   
+
     return () => {
       document.removeEventListener('click', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [onClose]);
 
- const getQRValue = (url: string) => {
-  try {
-    new URL(url);
-    return url;
-  } catch {
-    return window.location.origin + '/download?image=' + encodeURIComponent(url);
-  }
-};
-
-  // Add URL validation
-  const isValidUrl = (url: string) => {
+  const getQRValue = (url: string) => {
     try {
       new URL(url);
-      return true;
+      console.log('Valid QR code URL:', url);
+      return url;
     } catch {
-      return false;
+      console.warn('Invalid URL, falling back to empty string');
+      return ''; // Prevent invalid QR code
     }
   };
 
-  // Get the appropriate URL for display
-  const displayUrl = isValidUrl(downloadUrl)
+  const displayUrl = downloadUrl.startsWith('http')
     ? downloadUrl
     : 'Image download available';
 
@@ -64,22 +54,26 @@ export default function QRCodeModal({
     >
       <div className="bg-white rounded-xl p-6 max-w-sm w-full">
         <h3 className="text-xl font-bold text-center mb-4">Scan to Download</h3>
-        <div className="flex justify-center mb-6 p-4 bg-white">
-          <QRCode
-            value={getQRValue(downloadUrl)}
-            size={200}
-            level="H"
-            bgColor="#ffffff"
-            fgColor="#000000"
-          />
-        </div>
+        {downloadUrl.startsWith('http') ? (
+          <div className="flex justify-center mb-6 p-4 bg-white">
+            <QRCode
+              value={getQRValue(downloadUrl)}
+              size={200}
+              level="H"
+              bgColor="#ffffff"
+              fgColor="#000000"
+            />
+          </div>
+        ) : (
+          <p className="text-center text-red-600 mb-6">
+            QR code unavailable. Please download the image directly.
+          </p>
+        )}
         <div className="text-center text-sm text-gray-600 mb-4">
           Scan this QR code with your phone to download the image
         </div>
         <div className="text-center text-xs text-gray-500 mb-4 break-all">
-          {displayUrl.length > 40
-            ? `${displayUrl.substring(0, 40)}...`
-            : displayUrl}
+          {displayUrl.length > 40 ? `${displayUrl.substring(0, 40)}...` : displayUrl}
         </div>
         <button
           onClick={onClose}
