@@ -36,7 +36,7 @@ export const ResultPage = () => {
   // Dimensions and overlay image
   const width = Number(searchParams.get('width')) || 768;
   const height = Number(searchParams.get('height')) || 1152;
-  const OVERLAY_IMAGE = '/Booth_overlay_PRE.png'; 
+  const OVERLAY_IMAGE = `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/Booth_overlay_PRE.png`;
   useEffect(() => {
     if (!jobId || !filterId) {
       setError('Missing required parameters.');
@@ -139,9 +139,10 @@ export const ResultPage = () => {
   };
 
 const handleShowQRCode = () => {
-    if (imageUrl) {
-      setShowQRModal(true);
-    }
+  const urlToShare = imageUrl || compositeImage;
+  if (urlToShare) {
+    setShowQRModal(true);
+  }
   };
 
   // Format base64 string for proper display
@@ -255,9 +256,9 @@ const handleShowQRCode = () => {
               </div>
       </div>
 
-      {showQRModal && imageUrl && (
+      {showQRModal && (imageUrl || compositeImage) && (
         <QRCodeModal 
-          downloadUrl={imageUrl}
+          downloadUrl={imageUrl || compositeImage || ''}
           onClose={() => setShowQRModal(false)}
         />
       )}

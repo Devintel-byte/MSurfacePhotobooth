@@ -33,7 +33,7 @@ export const CameraContent = () => {
   useEffect(() => {
     if (!filterId || !ratio || !gender || !captureMode || !width || !height) {
       setError('Missing required parameters. Please start over.');
-      router.push('/filters');
+      router.push('/filter');
       return;
     }
 
